@@ -113,8 +113,8 @@ p <- plot_geo(cleanData, locationmode = 'USA-states', sizes = c(1, 250)) %>%
   layout(title = 'Bulk Storage Rates by Location', geo = g)
 print(p)
 
-Sys.setenv("plotly_username"="andrewt929")
-Sys.setenv("plotly_api_key"="oqNKDvtVslzMN9RouZvB") ## 'Cause who needs security?
+Sys.setenv("plotly_username"="YourUsername")
+Sys.setenv("plotly_api_key"="YourKey") ## 'Cause who needs security?
 
 
 ## Upload plot to repository

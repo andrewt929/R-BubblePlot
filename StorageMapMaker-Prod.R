@@ -3,13 +3,11 @@ if("XML" %in% rownames(installed.packages()) == FALSE) {install.packages("XML")}
 if("RCurl" %in% rownames(installed.packages()) == FALSE) {install.packages("RCurl")}
 if("RJSONIO" %in% rownames(installed.packages()) == FALSE) {install.packages("RJSONIO")}
 if("plyr" %in% rownames(installed.packages()) == FALSE) {install.packages("plyr")}
-if("dplyr" %in% rownames(installed.packages()) == FALSE) {install.packages("dplyr")}
 if("plotly" %in% rownames(installed.packages()) == FALSE) {install.packages("plotly")}
 require("XML")
 require("RCurl")
 require("RJSONIO")
 require("plyr")
-require("dplyr")
 require("plotly")
 
 
@@ -20,6 +18,7 @@ newData$`Ask Price\n On Shell Capacity\n$/BBL/Month` <- as.numeric(gsub("[$,]", 
 newData <- newData[!(is.na(newData$`Ask Price\n On Shell Capacity\n$/BBL/Month`)), ] ## Remove the coerced NA's from cells originally formated like "$X.XX <SOME WORD BULLSHIT HERE>" <- This could be improved
 newData$`Date Listed` <- as.Date(newData$`Date Listed`, format = "%m/%d/%Y") ## Format the dates
 newData$`Date Listed` <- gsub("00", "20", as.character(newData$`Date Listed`)) ## Fix data writen as "XX/XX/XX". Should be "XX/XX/20XX" <- This could be improved.
+
 
 ## Define geolocation functions (http://www.jose-gonzalez.org/using-google-maps-api-r/)
 url <- function(address, return.call = "json", sensor = "false") {
@@ -44,6 +43,7 @@ geoCode <- function(address,verbose=FALSE) {
   }
 }
 
+
 ## Get goelocations of new data
 address <- as.character(newData$Location)
 locations <- ldply(newData$Location, function(x) geoCode(x))
@@ -66,29 +66,15 @@ cleanData$lat <- as.numeric(cleanData$lat)
 cleanData$lon <- as.numeric(cleanData$lon)
   ## Get frequency of individual locations & add to dataframe <- This will determine the size of the dot
   ## Note: In the future this should be determined by a regional capacity amount.
-  location.frequency <- count(cleanData, `Formatted Location`)
+  location.frequency <- count(cleanData, "`Formatted Location`")
     scale.factor <- 5  
     ## Function to count the number of times a formatted loation occurs
     bind.frequency <- function(x){
-      cleanData$frequency[grepl(location.frequency$`Formatted Location`[x], cleanData$`Formatted Location`)] <- location.frequency$n[x]+scale.factor
+      cleanData$frequency[grepl(location.frequency$Formatted.Location[x], cleanData$`Formatted Location`)] <- location.frequency$freq[x]+scale.factor
     }
   cleanData$frequency<- as.numeric(lapply(cleanData$`Formatted Location`, bind.frequency))
-  ## Get average of locations & add to dataframe
-  avgRate <- aggregate(cleanData$`Rate ($/BBL/Month)`~cleanData$`Formatted Location`, cleanData, mean)
-  colnames(avgRate) <- c("Location", "Rate")
-  bind.average <- function(x){
-    cleanData$avgRate[grepl(avgRate$Location[x], cleanData$`Formatted Location`)] <- avgRate$Rate[x]
-  }
-  cleanData$avgRate <- as.numeric(lapply(cleanData$`Formatted Location`, bind.average))
-  ## Get standard deviation of locations & add to dataframe
-  rateSD <- aggregate(cleanData$`Rate ($/BBL/Month)`~cleanData$`Formatted Location`, cleanData, sd)
-  colnames(rateSD) <- c("Location", "SD")
-  bind.sd <- function(x){
-    cleanData$rateSD[grepl(rateSD$Location[x], cleanData$`Formatted Location`)] <- rateSD$SD[x]
-  }
-  cleanData$rateSD <- as.numeric(lapply(cleanData$`Formatted Location`, bind.sd))
-  
-  
+
+
 ## Define the map location for plotly <- check "old ideas" for pulling a google map and setting the window by avg gps coordinate  
 g <- list(
   scope = 'usa',
@@ -107,14 +93,15 @@ p <- plot_geo(cleanData, locationmode = 'USA-states', sizes = c(1, 250)) %>%
   add_markers(
     x = ~lon, y = ~lat, size = ~frequency, color = ~`Rate ($/BBL/Month)`, hoverinfo = "text",
     text = ~paste(cleanData$`Formatted Location`, "<br />", 
-                  "Rate: ", round(cleanData$avgRate, 2), "+/-", round(cleanData$rateSD, 2), " $/BBL/Month", "<br />", 
-                  "# of Offers: ", cleanData$frequency - scale.factor)
+                  "Rate: ", round(mean(cleanData$`Rate ($/BBL/Month)`), 2), "+/-", round(sd(cleanData$`Rate ($/BBL/Month)`), 2), " $/BBL/Month", "<br />", 
+                  "# of Offers: ", cleanData$frequency-scale.factor)
   ) %>%
   layout(title = 'Bulk Storage Rates by Location', geo = g)
+
 print(p)
 
-Sys.setenv("plotly_username"="andrewt929")
-Sys.setenv("plotly_api_key"="oqNKDvtVslzMN9RouZvB") ## 'Cause who needs security?
+Sys.setenv("plotly_username"="YOURNAMEHERE")
+Sys.setenv("plotly_api_key"="YOURKEYHERE") ## 'Cause who needs security?
 
 
 ## Upload plot to repository
